@@ -25,11 +25,14 @@
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
     ],
     "win": {
-      "target": "nsis",
+      "target": "portable",
       "icon": "assets/icon.ico"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "assets/icon.png",
       "category": "Network",
       "maintainer": "Palak Basak <developerpalakbasak@gmail.com>",
@@ -60,8 +63,9 @@
   },
   "author": {
     "name": "Palak Basak",
-    "email": "developerpalakbasak@gmail.com"
+    "email": "developerpalakbasak@gmail.com",
+    "website": "https://developerpalakbasak.vercel.app"
   },
-  "homepage": "https://github.com/not-available",
+  "homepage": "https://github.com/developerpalakbasak/local-sharer",
   "license": "MIT"
 }
