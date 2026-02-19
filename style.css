@@ -10,7 +10,6 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
-    padding: 30px 15px;
     display: flex;
     justify-content: center;
 }
@@ -31,11 +30,11 @@ body {
 
 .header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 15px;
 }
 
 .header h1 {
-    font-size: 2rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: #111827;
     margin-bottom: 8px;
@@ -43,16 +42,16 @@ body {
 
 .subtitle {
     color: #6b7280;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
 }
 
 /* ========== Save Location ========== */
 
 .save-location {
     background: #f3f4f6;
-    padding: 18px 20px;
+    padding: 15px 20px;
     border-radius: 14px;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     border: 1px solid #e5e7eb;
     display: flex;
     flex-direction: column;
@@ -69,12 +68,12 @@ body {
 .label {
     font-weight: 600;
     color: #374151;
-    font-size: 0.95rem;
+    font-size: 0.90rem;
 }
 
 .path-display {
     font-family: 'SF Mono', 'Menlo', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
-    font-size: 0.9rem;
+    font-size: 0.7rem;
     word-break: break-all;
     color: #4b5563;
     background: #ffffff;
@@ -90,15 +89,15 @@ body {
     display: flex;
     align-items: center;
     background: #f9fafb;
-    padding: 18px 20px;
+    padding: 15px 20px;
     border-radius: 16px;
-    margin-bottom: 25px;
+    margin-bottom: 10px;
     border: 1px solid #e5e7eb;
     transition: all 0.3s ease;
 }
 
 .status-icon {
-    font-size: 2rem;
+    font-size: 1.7rem;
     margin-right: 15px;
 }
 
@@ -128,7 +127,6 @@ body {
 .qr-container {
     position: relative;
     display: inline-block;
-    margin-bottom: 15px;
 }
 
 #qrCode {
@@ -195,8 +193,8 @@ body {
 
 .controls {
     display: flex;
-    gap: 12px;
-    margin-bottom: 25px;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
 .btn {
@@ -281,7 +279,7 @@ body {
 .instructions ol {
     padding-left: 20px;
     color: #4b5563;
-    font-size: 0.95rem;
+    font-size: 0.90rem;
 }
 
 .instructions li {

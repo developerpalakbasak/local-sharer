@@ -25,7 +25,7 @@
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}"
     ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "assets/icon.ico"
     },
     "linux": {
@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "electron-squirrel-startup": "^1.0.0",
     "express": "^4.18.2",
     "get-port": "^7.1.0",
     "multer": "^1.4.5-lts.1",
