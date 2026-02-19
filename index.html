@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Share</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📁 File Share</h1>
+            <p class="subtitle">Share files between devices on the same network</p>
+        </div>
+
+        <!-- Save Location -->
+        <div class="save-location">
+            <div class="location-header">
+                <span class="label">Save Location:</span>
+                <button class="btn btn-small" id="changeFolderBtn">Change</button>
+            </div>
+            <div class="path-display" id="savePath"></div>
+        </div>
+
+        <!-- Status Card -->
+        <div class="status-card" id="statusCard">
+            <div class="status-icon" id="statusIcon">⏸️</div>
+            <div class="status-text">
+                <div class="status-title" id="statusTitle">Server is stopped</div>
+                <div class="status-message" id="statusMessage">Click start to begin sharing</div>
+            </div>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="qr-section" id="qrSection" style="display: none;">
+            <div class="qr-container">
+                <img id="qrCode" alt="QR Code for mobile access" />
+                <div class="qr-overlay" id="qrOverlay">
+                    <span>📱 Scan to upload</span>
+                </div>
+            </div>
+            <div class="url-display" id="serverUrl"></div>
+            <div class="ip-list" id="ipList"></div>
+            <div class="qr-instructions">
+                <p>1. Make sure your phone is on the same WiFi network</p>
+                <p>2. Scan the QR code with your phone's camera</p>
+                <p>3. Select files to upload from your phone</p>
+            </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">
+                <span class="btn-icon">▶</span>
+                Start Sharing
+            </button>
+            <button class="btn btn-secondary" id="stopBtn" disabled>
+                <span class="btn-icon">⏹</span>
+                Stop Sharing
+            </button>
+        </div>
+
+        <!-- Instructions -->
+        <div class="instructions">
+            <h4>📱 Quick Guide:</h4>
+            <ol>
+                <li>Click "Start Sharing" to begin</li>
+                <li>Scan the QR code with your phone</li>
+                <li>Select files to upload from your phone</li>
+                <li>Files will appear in the save folder</li>
+            </ol>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
