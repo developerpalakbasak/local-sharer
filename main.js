@@ -1,286 +1,118 @@
-// main.js
+import { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { startServer, stopServer, serverEvents } from './server.js';
 
-const { app, BrowserWindow, ipcMain, dialog, Menu, Tray } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const { startServer, stopServer } = require('./server');
-const { getLocalIPs } = require('./network-utils');
-const QRCode = require('qrcode'); // Add this import
+serverEvents.on('uploadProgress', (data) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('upload-progress', data);
+  }
+});
 
-let mainWindow;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let win;
+let activeServer = null;
 let tray = null;
-let serverInstance = null; // Changed from 'server' to 'serverInstance' for clarity
-let serverUrl = null;
 
-// Keep a global reference to prevent garbage collection
-let serverProcess = null;
+const gotTheLock = app.requestSingleInstanceLock();
 
-function createWindow() {
-  // Create the browser window
-  mainWindow = new BrowserWindow({
-    width: 600,
-    height: 750, // Increased height for better QR display
-    minWidth: 500,
-    minHeight: 700,
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (win && !win.isDestroyed()) {
+      if (win.isMinimized()) win.restore();
+      win.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+  win = new BrowserWindow({
+    width: 820,
+    height: 700,
+    minWidth: 640,
+    minHeight: 540,
+    frame: true,
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, 'assets/icon.png'),
+    backgroundColor: '#0b0e14',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.cjs')
     },
-    icon: path.join(__dirname, 'assets/icon.png'),
-    show: false // Don't show until ready-to-show
   });
 
-  // Load the index.html
-  mainWindow.loadFile('index.html');
-
-  // Show when ready
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
-
-  // Handle window closed
-  mainWindow.on('closed', () => {
-    mainWindow = null;
-    // Stop server when window is closed
-    if (serverInstance) {
-      stopServer(serverInstance).catch(console.error);
+  win.loadFile('index.html');
+  
+  win.on('close', (event) => {
+    if (!app.isQuiting) {
+      event.preventDefault();
+      win.hide();
     }
   });
 
-  // Create application menu
-  createMenu();
-}
-
-function createMenu() {
-  const template = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Change Save Folder',
-          click: async () => {
-            const result = await dialog.showOpenDialog(mainWindow, {
-              properties: ['openDirectory'],
-              title: 'Select folder to save uploaded files'
-            });
-            if (!result.canceled) {
-              mainWindow.webContents.send('folder-changed', result.filePaths[0]);
-            }
-          }
-        },
-        { type: 'separator' },
-        { role: 'quit' }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
-      ]
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'About',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'About File Share',
-              message: 'File Share App',
-              detail: 'Version 1.0.0\nShare files between devices in the same network.\n\nScan QR code with your phone to upload files.',
-              buttons: ['OK']
-            });
-          }
-        }
-      ]
-    }
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-}
-
-function createTray() {
   tray = new Tray(path.join(__dirname, 'assets/icon.png'));
-
   const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Show App',
-      click: () => {
-        mainWindow.show();
-      }
-    },
-    {
-      label: 'Quit',
-      click: () => {
-        app.quit();
-      }
-    }
+    { label: 'Show App', click: () => { if (win) { win.show(); win.focus(); } } },
+    { label: 'Quit', click: () => { app.isQuiting = true; app.quit(); } }
   ]);
-
-  tray.setToolTip('File Share App');
+  tray.setToolTip('Local Sharer');
   tray.setContextMenu(contextMenu);
+  tray.on('click', () => { if (win) { win.show(); win.focus(); } });
+});
 
-  tray.on('click', () => {
-    mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
-  });
-}
-
-// Generate QR Code as Data URL
-async function generateQRCodeDataURL(text) {
-  try {
-    return await QRCode.toDataURL(text, {
-      width: 300,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#ffffff'
-      },
-      errorCorrectionLevel: 'H'
-    });
-  } catch (error) {
-    console.error('Failed to generate QR code:', error);
-    return null;
-  }
-}
-
-// IPC Handlers
 ipcMain.handle('start-server', async (event, savePath) => {
+  if (activeServer) {
+    return { ok: true, already: true };
+  }
   try {
-    // If server is already running, stop it first
-    if (serverInstance) {
-      await stopServer(serverInstance);
-      serverInstance = null;
-      serverUrl = null;
-    }
-
-    // Create save directory if it doesn't exist
-    if (!fs.existsSync(savePath)) {
-      fs.mkdirSync(savePath, { recursive: true });
-    }
-
-    // Start the server
-    serverInstance = await startServer(savePath);
-    serverUrl = serverInstance.url;
-
-    // Get local IPs
-    const ips = getLocalIPs();
-
-    // Generate QR code
-    const qrCodeDataURL = await generateQRCodeDataURL(serverUrl);
-
-    return {
-      success: true,
-      url: serverInstance.url,
-      ips: ips,
-      qrCode: qrCodeDataURL
-    };
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    const result = await startServer(4000, savePath);
+    activeServer = result;
+    return { ok: true, entries: result.entries, port: result.port };
+  } catch (err) {
+    console.error('Server start failed:', err);
+    return { ok: false, error: err.message };
   }
 });
 
 ipcMain.handle('stop-server', async () => {
-  try {
-    if (serverInstance) {
-      console.log('Stopping server...');
-      await stopServer(serverInstance);
-      serverInstance = null;
-      serverUrl = null;
-      console.log('Server stopped successfully');
-    }
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to stop server:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+  if (activeServer) {
+    await stopServer(activeServer);
+    activeServer = null;
   }
+  return { ok: true };
 });
 
 ipcMain.handle('select-folder', async () => {
-  const result = await dialog.showOpenDialog(mainWindow, {
+  const result = await dialog.showOpenDialog(win, {
     properties: ['openDirectory'],
-    title: 'Select folder to save uploaded files'
+    title: 'Select Destination Folder'
   });
-
-  if (!result.canceled) {
-    return result.filePaths[0];
-  }
-  return null;
+  return result.canceled ? null : result.filePaths[0];
 });
 
 ipcMain.handle('get-default-folder', () => {
-  const loc = path.join(app.getPath('desktop'), 'FileShare');
-  return loc
+  return path.join(app.getPath('desktop'), 'Local Sharer');
 });
 
-ipcMain.handle('open-folder', (event, folderPath) => {
-  if (fs.existsSync(folderPath)) {
-    require('child_process').exec(
-      process.platform === 'win32'
-        ? `explorer "${folderPath}"`
-        : process.platform === 'darwin'
-          ? `open "${folderPath}"`
-          : `xdg-open "${folderPath}"`
-    );
-  }
+ipcMain.handle('open-folder', async (event, folderPath) => {
+  if (folderPath) await shell.openPath(folderPath);
 });
 
-ipcMain.handle('get-server-status', () => {
-  return {
-    isRunning: serverInstance !== null,
-    url: serverUrl
-  };
-});
-
-// App lifecycle
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on('before-quit', async (e) => {
+  if (activeServer) {
+    e.preventDefault();
+    await stopServer(activeServer);
+    activeServer = null;
     app.quit();
   }
 });
 
-app.on('before-quit', async (event) => {
-  // Prevent the app from quitting immediately
-  event.preventDefault();
-
-  try {
-    if (serverInstance) {
-      console.log('Stopping server before quit...');
-      await stopServer(serverInstance);
-      serverInstance = null;
-      console.log('Server stopped, quitting now...');
-    }
-    app.exit(0);
-  } catch (error) {
-    console.error('Error stopping server:', error);
-    app.exit(1);
-  }
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
 });
+}

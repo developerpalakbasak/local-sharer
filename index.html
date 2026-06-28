@@ -1,76 +1,50 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Share</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Local Sharer Desktop</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>📁 File Share</h1>
-            <p class="subtitle">Share files between devices on the same network</p>
-        </div>
+  <div class="app-container">
+    <aside class="sidebar">
+      <h1>Local<span class="highlight">Sharer</span></h1>
+      <p class="subtitle">Share files across network</p>
 
-        <!-- Save Location -->
-        <div class="save-location">
-            <div class="location-header">
-                <span class="label">Save Location:</span>
-                <button class="btn btn-small" id="changeFolderBtn">Change</button>
-            </div>
-            <div class="path-display" id="savePath"></div>
+      <div class="folder-selection">
+        <h3>Save Destination</h3>
+        <div id="save-path" class="path-display">No folder selected</div>
+        <div style="display: flex; gap: 8px;">
+          <button id="change-folder-btn" class="btn secondary">Change Folder</button>
+          <button id="open-folder-btn" class="btn secondary">Open Folder</button>
         </div>
+      </div>
 
-        <!-- Status Card -->
-        <div class="status-card" id="statusCard">
-            <div class="status-icon" id="statusIcon">⏸️</div>
-            <div class="status-text">
-                <div class="status-title" id="statusTitle">Server is stopped</div>
-                <div class="status-message" id="statusMessage">Click start to begin sharing</div>
-            </div>
+      <div class="controls">
+        <button id="start-btn" class="btn primary">Start Sharing</button>
+        <button id="stop-btn" class="btn danger" style="display:none;">Stop Sharing</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div id="status-panel" class="status-panel offline">
+        <h2>Status: <span id="status-text">Stopped</span></h2>
+      </div>
+
+      <div id="upload-progress-container" style="display:none;" class="status-panel">
+        <h3 style="margin-top: 0">Active Transfer</h3>
+        <p id="upload-filename">Filename: </p>
+        <div style="background: var(--panel-bg); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin-top: 8px;">
+          <div id="upload-progress-bar" style="background: var(--accent); width: 0%; height: 8px; transition: width 0.2s ease;"></div>
         </div>
+      </div>
 
-        <!-- QR Code Section -->
-        <div class="qr-section" id="qrSection" style="display: none;">
-            <div class="qr-container">
-                <img id="qrCode" alt="QR Code for mobile access" />
-                
-            </div>
-            <div class="url-display" id="serverUrl"></div>
-            <div class="ip-list" id="ipList"></div>
-            <div class="qr-instructions">
-                <p>1. Make sure your phone is on the same WiFi network</p>
-                <p>2. Scan the QR code with your phone's camera</p>
-                <p>3. Select files to upload from your phone</p>
-            </div>
-        </div>
-
-        <!-- Control Buttons -->
-        <div class="controls">
-            <button class="btn btn-primary" id="startBtn">
-                <span class="btn-icon">▶</span>
-                Start Sharing
-            </button>
-            <button class="btn btn-secondary" id="stopBtn" disabled>
-                <span class="btn-icon">⏹</span>
-                Stop Sharing
-            </button>
-        </div>
-
-        <!-- Instructions -->
-        <div class="instructions">
-            <h4>📱 Quick Guide:</h4>
-            <ol>
-                <li>Click "Start Sharing" to begin</li>
-                <li>Scan the QR code with your phone</li>
-                <li>Select files to upload from your phone</li>
-                <li>Files will appear in the save folder</li>
-            </ol>
-        </div>
-    </div>
-
-    <script src="renderer.js"></script>
+      <div id="qr-container" class="qr-container" style="display:none;">
+        <h3>Connect your devices:</h3>
+        <div class="qr-list" id="qr-list"></div>
+      </div>
+    </main>
+  </div>
+  <script src="renderer.js"></script>
 </body>
 </html>

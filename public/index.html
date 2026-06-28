@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Streaming File Sharer</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+<div class="container">
+  <h1>📁 Streaming File Sharer</h1>
+
+  <!-- Uploads Manager Container -->
+  <div id="uploadsManager" class="uploads-manager"></div>
+
+  <div class="upload-grid">
+    <div class="upload-section">
+      <h2><span>📄</span> Upload File</h2>
+      <input type="file" id="fileInput">
+      <button onclick="uploadFile()" class="btn btn-primary">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+        Upload File
+      </button>
+    </div>
+
+    <div class="upload-section">
+      <h2><span>📂</span> Upload Folder</h2>
+      <input type="file" id="folderInput" webkitdirectory directory multiple>
+      <button onclick="uploadFolder()" class="btn btn-primary">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path></svg>
+        Upload Folder
+      </button>
+    </div>
+  </div>
+
+  <h2><span>📦</span> Available Files</h2>
+  <div class="files-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Size</th>
+          <th>Type</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="fileList"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+async function fetchFiles() {
+  const res = await fetch('/api/files');
+  const files = await res.json();
+  const tbody = document.getElementById('fileList');
+  tbody.innerHTML = files.map(f => {
+    let icon = '📄';
+    if(f.type === 'video') icon = '🎬';
+    if(f.type === 'audio') icon = '🎵';
+    if(f.type === 'pictures') icon = '🖼️';
+    
+    return `
+    <tr>
+      <td data-label="Name" class="file-name-cell">
+        <div class="file-icon">${icon}</div>
+        <span>${f.name}</span>
+      </td>
+      <td data-label="Size">${f.size}</td>
+      <td data-label="Type">${f.type}</td>
+      <td data-label="Action">
+        <a href="/download/${encodeURIComponent(f.type)}/${encodeURIComponent(f.name)}" style="text-decoration:none">
+          <button class="btn btn-download">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Download
+          </button>
+        </a>
+      </td>
+    </tr>
+    `;
+  }).join('');
+}
+
+const uploadsManager = document.getElementById('uploadsManager');
+const activeUploads = {};
+
+function createUploadCard(id, filename) {
+  const card = document.createElement('div');
+  card.className = 'upload-card';
+  card.id = `upload-${id}`;
+  card.innerHTML = `
+    <div class="upload-info">
+      <span class="upload-filename">${filename}</span>
+      <span class="upload-percent">0%</span>
+    </div>
+    <div class="progress-container">
+      <div class="progress-fill" style="width: 0%"></div>
+    </div>
+  `;
+  uploadsManager.appendChild(card);
+  return card;
+}
+
+async function uploadFile() {
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+  if (!file) return alert("Select a file");
+  
+  const uploadId = Math.random().toString(36).substr(2, 9);
+  createUploadCard(uploadId, file.name);
+  
+  const socketId = socket.id;
+  await fetch(`/upload?filename=${encodeURIComponent(file.name)}&socketId=${socketId}&uploadId=${uploadId}`, { method: 'POST', body: file });
+  
+  // Cleanup card after a delay
+  setTimeout(() => {
+    const card = document.getElementById(`upload-${uploadId}`);
+    if (card) card.classList.add('fade-out');
+    setTimeout(() => card?.remove(), 500);
+  }, 2000);
+  
+  fileInput.value = ''; // clear input
+  fetchFiles();
+}
+
+async function uploadFolder() {
+  const folderInput = document.getElementById('folderInput');
+  const files = folderInput.files;
+  if (!files.length) return alert("Select a folder");
+
+  for (let file of files) {
+    const uploadId = Math.random().toString(36).substr(2, 9);
+    createUploadCard(uploadId, file.webkitRelativePath);
+    
+    const socketId = socket.id;
+    // We don't await here if we want parallel, but parallel folder upload might crash small servers.
+    // Let's keep it sequential for folders but parallel with other actions.
+    await fetch(`/upload?filename=${encodeURIComponent(file.webkitRelativePath)}&socketId=${socketId}&uploadId=${uploadId}`, { method: 'POST', body: file });
+    
+    setTimeout(() => {
+      const card = document.getElementById(`upload-${uploadId}`);
+      if (card) card.classList.add('fade-out');
+      setTimeout(() => card?.remove(), 500);
+    }, 2000);
+  }
+  folderInput.value = ''; // clear input
+  fetchFiles();
+}
+
+fetchFiles();
+
+const socket = io();
+socket.on('uploadProgress', (data) => {
+  const card = document.getElementById(`upload-${data.uploadId}`);
+  if (card) {
+    const fill = card.querySelector('.progress-fill');
+    const percent = card.querySelector('.upload-percent');
+    fill.style.width = `${data.progress}%`;
+    percent.innerText = `${data.progress}%`;
+    
+    if (data.progress >= 100) {
+      card.classList.add('completed');
+    }
+  }
+});
+</script>
+</body>
+</html>
